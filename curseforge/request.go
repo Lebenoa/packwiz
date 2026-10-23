@@ -15,8 +15,14 @@ import (
 
 const cfApiServer = "api.curseforge.com"
 
-// If you fork/derive from packwiz, I request that you obtain your own API key.
-const cfApiKeyDefault = "JDJhJDEwJHNBWVhqblU1N0EzSmpzcmJYM3JVdk92UWk2NHBLS3BnQ2VpbGc1TUM1UGNKL0RYTmlGWWxh"
+// Public CurseForge API key shared by the MultiMC/PolyMC/Prism launcher family
+// (https://github.com/enjarai/the-curseforge-api-key). CurseForge only returns
+// downloadUrl for projects with distribution disabled (allowModDistribution=false)
+// to API keys it trusts, i.e. keys from known launchers; packwiz uses this key so
+// such mods can still be downloaded instead of ending up as "manual downloads".
+// If you fork/derive from packwiz, I request that you obtain your own API key
+// (it can be provided at build time: -ldflags="-X 'github.com/packwiz/packwiz/curseforge.cfApiKey=key'").
+const cfApiKeyDefault = "JDJhJDEwJGJMNGJJTDVwVVdxZmNPN0tRdG5NUmVha3d0ZkhiTktoNnYxdVRwS2x6aHdvdWVFSlFuUG5t"
 
 // Exists so you can provide it as a build parameter: -ldflags="-X 'github.com/packwiz/packwiz/curseforge.cfApiKey=key'"
 var cfApiKey = ""

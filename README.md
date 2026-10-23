@@ -13,6 +13,25 @@ packwiz is not so great for...
 
 Join my Discord server if you need help [here](https://discord.gg/Csh8zbbhCt)!
 
+## CurseForge API key
+
+packwiz sends requests to the CurseForge API using the public API key shared by the
+MultiMC/PolyMC/Prism launcher family (see
+[enjarai/the-curseforge-api-key](https://github.com/enjarai/the-curseforge-api-key)).
+
+This key is required for more than just authentication: CurseForge only includes
+`downloadUrl` in its API responses for projects that disabled third-party distribution
+(`allowModDistribution = false`, e.g. [InstaPack](https://www.curseforge.com/minecraft/mc-mods/instapack))
+when the request uses an API key it trusts, such as those from known launchers. With an
+untrusted key those files come back without a `downloadUrl`, so packwiz would mark them
+as manual downloads and exports would fail instead of downloading them.
+
+If you fork or derive from packwiz, obtain your own key from
+[console.curseforge.com](https://console.curseforge.com/) and build with
+`-ldflags="-X 'github.com/packwiz/packwiz/curseforge.cfApiKey=key'"`. Note that custom
+keys may not receive `downloadUrl` for distribution-disabled projects, in which case
+those mods fall back to manual downloads.
+
 ## Features
 - Git-friendly TOML-based metadata format
 - MultiMC pack installer/updater, with support for optional mods and fast automatic updates - perfect for servers!
