@@ -32,12 +32,45 @@ If you fork or derive from packwiz, obtain your own key from
 keys may not receive `downloadUrl` for distribution-disabled projects, in which case
 those mods fall back to manual downloads.
 
+## NoRisk launcher export
+
+`packwiz norisk export` writes a `.noriskpack` for the
+[NoRisk launcher](https://github.com/NoRiskClient/noriskclient-launcher): a root
+`profile.json` describing the loader and every mod, plus an `overrides/` directory with the
+pack's ordinary files (`config/`, `options.txt`, loose resource packs, ...).
+
+The profile icon is embedded in `profile.json` and survives import. Configure it in
+`pack.toml`:
+
+```toml
+[export.norisk]
+icon = "icon.png"
+```
+
+`icon` may be a png/jpg/gif/webp file relative to `pack.toml` (embedded as Base64, up to
+2 MiB), an `https://` URL, or a `data:image/...;base64,...` URI. `--icon` overrides it for
+a single run, and `-o` changes the output path (a `.noriskpack` extension is added if
+missing).
+
+Mods are exported as download records, never as bundled jars: the launcher deletes mod
+files it does not track and does not load jars under `overrides/mods`. Every mod therefore
+needs an HTTPS download URL; CurseForge metadata mods are resolved through the CurseForge
+API (including projects with third-party distribution disabled), and anything else becomes
+a plain URL record. Files under `mods/` become mod records, files elsewhere are placed in
+`overrides/` at the same path. Server-only files are left out, optional mods are exported
+disabled unless `default = true`, and mod updates are disabled so the pack stays
+authoritative.
+
+The launcher names the imported profile after the `.noriskpack` file, so use `-o` when you
+need a specific name. It also extracts `overrides/` once at import time, so player changes
+to those files are not overwritten later; re-import the pack after changing overrides.
+
 ## Features
 - Git-friendly TOML-based metadata format
 - MultiMC pack installer/updater, with support for optional mods and fast automatic updates - perfect for servers!
 - Pack distribution with HTTP servers, with a built in local server for testing
 - Easy installation and updating of multiple mods at once from CurseForge and Modrinth
-- Exporting to CurseForge and Modrinth packs
+- Exporting to CurseForge, Modrinth and NoRisk launcher packs
 - Importing from CurseForge packs
 - Server-only and Client-only mod handling
 - Creation of remote file metadata from JAR files for CurseForge mods
