@@ -303,29 +303,6 @@ func (c *cfApiClient) getFileInfo(modID uint32, fileID uint32) (modFileInfo, err
 	return infoRes.Data, nil
 }
 
-// GetFileDownloadURLs resolves the direct download URL of each CurseForge file ID.
-//
-// The API only exposes downloadUrl for projects with third-party distribution disabled
-// to keys from trusted launchers, so a missing entry means the file cannot be downloaded
-// on the user's behalf. The URLs are returned to the caller only and are not cached, per
-// the CurseForge API terms; callers that embed them (exporters) are responsible for that.
-func GetFileDownloadURLs(fileIDs []uint32) (map[uint32]string, error) {
-	urls := make(map[uint32]string, len(fileIDs))
-	if len(fileIDs) == 0 {
-		return urls, nil
-	}
-	files, err := cfDefaultClient.getFileInfoMultiple(fileIDs)
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		if file.DownloadURL != "" {
-			urls[file.ID] = file.DownloadURL
-		}
-	}
-	return urls, nil
-}
-
 func (c *cfApiClient) getFileInfoMultiple(fileIDs []uint32) ([]modFileInfo, error) {
 	var infoRes struct {
 		Data []modFileInfo `json:"data"`

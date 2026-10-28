@@ -26,6 +26,10 @@ This fork adds the following on top of upstream packwiz:
   for the [NoRisk launcher](https://github.com/NoRiskClient/noriskclient-launcher)
   (root `profile.json` plus `overrides/`, icon embedding, CurseForge-backed mod
   records). See [NoRisk launcher export](#norisk-launcher-export).
+- **Unbundled Modrinth export** — `packwiz modrinth export --no-bundle` lists every
+  mod in `modrinth.index.json` by download URL (including CurseForge CDN links) instead
+  of embedding the jars in overrides. See
+  [Unbundled .mrpack export](#unbundled-mrpack-export).
 
 ## CurseForge API key
 
@@ -75,9 +79,55 @@ a plain URL record. Files under `mods/` become mod records, files elsewhere are 
 disabled unless `default = true`, and mod updates are disabled so the pack stays
 authoritative.
 
+CurseForge records also carry `file_fingerprint`, the murmur2 fingerprint CurseForge
+reports for that file. The launcher's import preview matches CurseForge records to the
+platform by this value rather than by SHA-1, so a record without it is listed as having no
+checksum to check. The SHA-1 is still exported for file verification, and when CurseForge
+returns no fingerprint the field is omitted instead of being derived from the SHA-1, so
+the preview keeps reporting honestly rather than showing a fabricated match.
+
 The launcher names the imported profile after the `.noriskpack` file, so use `-o` when you
 need a specific name. It also extracts `overrides/` once at import time, so player changes
 to those files are not overwritten later; re-import the pack after changing overrides.
+
+## Unbundled .mrpack export
+
+`packwiz modrinth export` normally lists files from Modrinth's allowed download domains
+(`cdn.modrinth.com`, `github.com`, `raw.githubusercontent.com`, `gitlab.com`) in
+`modrinth.index.json`, and embeds everything else — CurseForge mods, files on other hosts
+— in `overrides/`, `client-overrides/` or `server-overrides/`.
+
+`--no-bundle` lists every mod file in the manifest by URL instead:
+
+```sh
+packwiz modrinth export --no-bundle -o pack.mrpack
+```
+
+CurseForge metadata mods are resolved through the CurseForge API, including projects with
+third-party distribution disabled (see [CurseForge API key](#curseforge-api-key)). The
+resulting `edge.forgecdn.net` link needs no credentials and contains no API key; it is a
+plain CDN URL that redirects once to `mediafilez.forgecdn.net`. Hashes and sizes come from
+the file packwiz downloads for the export, so they describe exactly what a launcher will
+verify.
+
+`--no-bundle` ignores `--restrictDomains`. Nothing is omitted silently: a file without an
+HTTPS URL (`http://`, `file://`, or a CurseForge file the API will not hand out) stops the
+export with an error naming the file. The archive is written to a temporary file and moved
+into place, so a failed export neither replaces an existing `.mrpack` nor leaves a
+truncated one.
+
+### Launcher compatibility
+
+The flag is opt-in because support varies. What has been verified here: the generated
+`.mrpack` contains valid entries, and each URL downloads anonymously with a SHA-1, SHA-512
+and size matching the manifest. What has not: importing the result in a real launcher.
+
+- **Modrinth** rejects packs whose `downloads` are not from its four allowed domains, so
+  `--no-bundle` output that references CurseForge or other hosts cannot be uploaded. The
+  command warns when it emits such a host.
+- **Other launchers** must follow the CurseForge redirect (the format requires following
+  redirects), and some enforce their own domain allowlists. Import the export in the
+  launcher you target before relying on it.
 
 ## Features
 - Git-friendly TOML-based metadata format

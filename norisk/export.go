@@ -133,7 +133,7 @@ func runExport() error {
 		return err
 	}
 
-	cfURLs, err := resolveCurseForgeURLs(mods)
+	cfFiles, err := curseforge.ResolveModFiles(mods)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func runExport() error {
 				continue
 			}
 
-			record, err := buildModRecord(dl, cfURLs, mcVersion, loader)
+			record, err := buildModRecord(dl, cfFiles, mcVersion, loader)
 			_ = dl.File.Close()
 			if err != nil {
 				failures = append(failures, fmt.Sprintf("%s (%s): %v", dl.Mod.Name, dl.Mod.FileName, err))
@@ -320,42 +320,12 @@ func isModRecordPath(relPath string) bool {
 	return path.Dir(clean) == "." && ext == ".jar"
 }
 
-// resolveCurseForgeURLs resolves the direct download URL of every CurseForge metadata
-// mod. The download session keeps that URL inside its own downloader, and a NoRisk mod
-// record has to carry it, so it is looked up here in one batch.
-func resolveCurseForgeURLs(mods []*core.Mod) (map[uint32]string, error) {
-	var fileIDs []uint32
-	seen := make(map[uint32]bool)
-	for _, mod := range mods {
-		if mod.Download.Mode != core.ModeCF {
-			continue
-		}
-		raw := updateString(mod, "curseforge", "file-id")
-		id, err := strconv.ParseUint(raw, 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("%s has an invalid CurseForge file ID %q", mod.Name, raw)
-		}
-		if !seen[uint32(id)] {
-			seen[uint32(id)] = true
-			fileIDs = append(fileIDs, uint32(id))
-		}
-	}
-	if len(fileIDs) == 0 {
-		return map[uint32]string{}, nil
-	}
-	urls, err := curseforge.GetFileDownloadURLs(fileIDs)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve CurseForge download URLs: %w", err)
-	}
-	return urls, nil
-}
-
 // buildModRecord converts a completed download into the mod record the launcher
 // persists in the profile.
-func buildModRecord(dl core.CompletedDownload, cfURLs map[uint32]string, mcVersion, loader string) (Mod, error) {
+func buildModRecord(dl core.CompletedDownload, cfFiles map[uint32]curseforge.FileInfo, mcVersion, loader string) (Mod, error) {
 	mod := dl.Mod
 
-	downloadURL, err := modDownloadURL(mod, cfURLs)
+	downloadURL, err := modDownloadURL(mod, cfFiles)
 	if err != nil {
 		return Mod{}, err
 	}
@@ -388,6 +358,11 @@ func buildModRecord(dl core.CompletedDownload, cfURLs map[uint32]string, mcVersi
 		source.FileID = cfFileID
 		source.DownloadURL = downloadURL
 		source.FileHash = dl.Hashes["sha1"]
+		// The launcher recognises CurseForge files by fingerprint, not by SHA-1. Only
+		// the value CurseForge returned for this file is used; it is never derived.
+		if fileID, err := curseforge.GetFileID(mod); err == nil {
+			source.Fingerprint = cfFiles[fileID].Fingerprint
+		}
 	default:
 		// Any other HTTPS host is fine; the launcher reports it as a third-party host.
 		source.Type = sourceURL
@@ -417,7 +392,7 @@ func buildModRecord(dl core.CompletedDownload, cfURLs map[uint32]string, mcVersi
 	return record, nil
 }
 
-func modDownloadURL(mod *core.Mod, cfURLs map[uint32]string) (string, error) {
+func modDownloadURL(mod *core.Mod, cfFiles map[uint32]curseforge.FileInfo) (string, error) {
 	switch mod.Download.Mode {
 	case core.ModeURL, "":
 		return strings.TrimSpace(mod.Download.URL), nil
@@ -427,11 +402,11 @@ func modDownloadURL(mod *core.Mod, cfURLs map[uint32]string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid CurseForge file ID %q", raw)
 		}
-		downloadURL, ok := cfURLs[uint32(id)]
-		if !ok {
+		file, ok := cfFiles[uint32(id)]
+		if !ok || file.DownloadURL == "" {
 			return "", errors.New("CurseForge did not return a download URL for this file (the project may have third-party distribution disabled)")
 		}
-		return downloadURL, nil
+		return file.DownloadURL, nil
 	default:
 		return "", fmt.Errorf("unsupported download mode %q", mod.Download.Mode)
 	}

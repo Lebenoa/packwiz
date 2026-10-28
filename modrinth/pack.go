@@ -11,12 +11,16 @@ type Pack struct {
 }
 
 type PackFile struct {
-	Path   string            `json:"path"`
-	Hashes map[string]string `json:"hashes"`
-	Env    *struct {
-		Client string `json:"client"`
-		Server string `json:"server"`
-	} `json:"env"`
-	Downloads []string `json:"downloads"`
-	FileSize  uint32   `json:"fileSize"`
+	Path      string            `json:"path"`
+	Hashes    map[string]string `json:"hashes"`
+	Env       *PackEnv          `json:"env"`
+	Downloads []string          `json:"downloads"`
+	FileSize  uint32            `json:"fileSize"`
+}
+
+// PackEnv marks which sides a file is needed on. The format only allows the values
+// required, optional and unsupported.
+type PackEnv struct {
+	Client string `json:"client"`
+	Server string `json:"server"`
 }

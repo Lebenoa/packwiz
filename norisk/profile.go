@@ -76,6 +76,11 @@ type ModSource struct {
 	FileName    string `json:"file_name,omitempty"`
 	DownloadURL string `json:"download_url,omitempty"`
 	FileHash    string `json:"file_hash_sha1,omitempty"`
+	// Fingerprint is CurseForge's file fingerprint (murmur2). The launcher's import
+	// preview matches CurseForge records to the platform by this value, not by SHA-1,
+	// so a record without it is reported as having no checksum to check. It is omitted
+	// when CurseForge did not provide one rather than being derived from another hash.
+	Fingerprint *uint32 `json:"file_fingerprint,omitempty"`
 	// Plain URL
 	URL string `json:"url,omitempty"`
 }

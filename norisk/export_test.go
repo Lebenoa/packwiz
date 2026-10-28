@@ -12,6 +12,7 @@ import (
 
 	"github.com/packwiz/packwiz/cmdshared"
 	"github.com/packwiz/packwiz/core"
+	"github.com/packwiz/packwiz/curseforge"
 )
 
 func TestLoaderFor(t *testing.T) {
@@ -198,11 +199,15 @@ func TestBuildModRecord(t *testing.T) {
 				"curseforge": {"project-id": int64(238222), "file-id": int64(6829086)},
 			},
 		}
-		urls := map[uint32]string{6829086: "https://edge.forgecdn.net/files/6829/86/jei.jar"}
+		fingerprint := uint32(273936777)
+		files := map[uint32]curseforge.FileInfo{6829086: {
+			DownloadURL: "https://edge.forgecdn.net/files/6829/86/jei.jar",
+			Fingerprint: &fingerprint,
+		}}
 		record, err := buildModRecord(core.CompletedDownload{
 			Mod:    mod,
 			Hashes: map[string]string{"sha1": "cafe"},
-		}, urls, mc, loader)
+		}, files, mc, loader)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -212,8 +217,53 @@ func TestBuildModRecord(t *testing.T) {
 		if record.Source.ProjectID != "238222" || record.Source.FileID != "6829086" {
 			t.Fatalf("unexpected ids: %+v", record.Source)
 		}
-		if record.Source.DownloadURL != urls[6829086] {
+		if record.Source.DownloadURL != files[6829086].DownloadURL {
 			t.Fatalf("download url = %q", record.Source.DownloadURL)
+		}
+		if record.Source.Fingerprint == nil || *record.Source.Fingerprint != fingerprint {
+			t.Fatalf("fingerprint = %v, want %d", record.Source.Fingerprint, fingerprint)
+		}
+		if record.Source.FileHash != "cafe" {
+			t.Fatalf("sha1 must be preserved alongside the fingerprint: %q", record.Source.FileHash)
+		}
+		encoded, err := json.Marshal(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(encoded), `"file_fingerprint":273936777`) {
+			t.Fatalf("record does not serialise file_fingerprint: %s", encoded)
+		}
+	})
+
+	t.Run("curseforge without fingerprint keeps honest missing metadata", func(t *testing.T) {
+		mod := &core.Mod{
+			Name:     "InstaPack",
+			FileName: "mods/instapack.jar",
+			Download: core.ModDownload{Mode: core.ModeCF},
+			Update:   map[string]map[string]interface{}{"curseforge": {"project-id": int64(1733601), "file-id": int64(9099256)}},
+		}
+		files := map[uint32]curseforge.FileInfo{9099256: {
+			DownloadURL: "https://edge.forgecdn.net/files/9099/256/instapack-fabric-26.3-1.0.0.jar",
+		}}
+		record, err := buildModRecord(core.CompletedDownload{
+			Mod:    mod,
+			Hashes: map[string]string{"sha1": "e736258a1e2071bcc5086a51d6372dcd70b3c6da"},
+		}, files, mc, loader)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if record.Source.Fingerprint != nil {
+			t.Fatalf("fingerprint should not be invented: %v", *record.Source.Fingerprint)
+		}
+		encoded, err := json.Marshal(record)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(encoded), "file_fingerprint") {
+			t.Fatalf("missing fingerprint must stay omitted: %s", encoded)
+		}
+		if !strings.Contains(string(encoded), `"file_hash_sha1"`) {
+			t.Fatalf("SHA-1 should still be exported: %s", encoded)
 		}
 	})
 
