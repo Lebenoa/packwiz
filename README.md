@@ -13,6 +13,20 @@ packwiz is not so great for...
 
 Join my Discord server if you need help [here](https://discord.gg/Csh8zbbhCt)!
 
+## Different from upstream
+
+This fork adds the following on top of upstream packwiz:
+
+- **Downloads for distribution-disabled CurseForge projects** — uses the trusted
+  launcher API key (MultiMC/PolyMC/Prism family), so mods whose authors disable
+  third-party distribution (e.g. InstaPack) resolve and download through the API
+  instead of falling back to manual downloads and aborting exports. See
+  [CurseForge API key](#curseforge-api-key).
+- **NoRisk launcher export** — `packwiz norisk export` produces a `.noriskpack`
+  for the [NoRisk launcher](https://github.com/NoRiskClient/noriskclient-launcher)
+  (root `profile.json` plus `overrides/`, icon embedding, CurseForge-backed mod
+  records). See [NoRisk launcher export](#norisk-launcher-export).
+
 ## CurseForge API key
 
 packwiz sends requests to the CurseForge API using the public API key shared by the
